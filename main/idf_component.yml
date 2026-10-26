@@ -1,0 +1,7 @@
+dependencies:
+  idf:
+    version: ">=5.5"
+  # 官方 esp-protocols 里的 WebSocket 客户端。
+  # ESP-IDF 5.5 的 core 组件里没有 websocket_client,必须显式引入。
+  # mbedtls / NimBLE / BLUFI 都在 IDF core 里,不需要额外拉取。
+  espressif/esp_websocket_client: "^1.8.0"

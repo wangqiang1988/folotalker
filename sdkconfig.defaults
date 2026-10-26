@@ -1,0 +1,74 @@
+# --- 目标芯片 ---
+CONFIG_IDF_TARGET="esp32c3"
+# 注:ESP32-C3 无 PSRAM,故不设 CONFIG_SPIRAM。
+
+# --- Flash ---
+# FoloToy AI Passport 当前产品/固件基线使用 8MB Flash。
+CONFIG_ESPTOOLPY_FLASHSIZE_8MB=y
+# 固定 8MB 镜像头，关闭 detect，便于 idf.py merge-bin。
+CONFIG_ESPTOOLPY_HEADER_FLASHSIZE_UPDATE=n
+# 默认模板只保留 NVS、PHY data 和占用剩余空间的 factory app；用户可按需修改。
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+CONFIG_PARTITION_TABLE_FILENAME="partitions.csv"
+
+# --- 控制台:USB-Serial-JTAG(C3 原生 USB,GPIO18/19)---
+# 不用 UART0:其默认 TX=GPIO21 与本板背光引脚冲突。
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
+CONFIG_ESP_CONSOLE_SECONDARY_NONE=y
+
+# --- LVGL ---
+CONFIG_LV_COLOR_DEPTH_16=y
+# 20 ms display refresh period targets up to 50 FPS when rendering and SPI
+# transfer complete within the same budget.
+CONFIG_LV_DEF_REFR_PERIOD=20
+CONFIG_LV_FONT_MONTSERRAT_14=y
+CONFIG_LV_FONT_MONTSERRAT_20=y
+# 中文字体子集由 assets/fonts/ 下的生成文件提供(ft_font_16/20/28),
+# 应用通过 LV_FONT_DECLARE 使用,不依赖这里的 Kconfig 开关。
+# 保留 Montserrat 作为 fallback —— 它提供 LVGL 内置图标字形。
+CONFIG_LV_USE_FONT_PLACEHOLDER=y
+CONFIG_LV_TXT_ENC_UTF8=y
+# LVGL 内置 malloc 池大小。它是独立静态区、不与系统堆共享,配大了会白白占用 RAM。
+# FoloTalker 的界面比基线 demo 复杂(卡片/成员列表/输入页),需要更多绘制内存。
+# LVGL 9.6 用 LV_MEM_SIZE(字节);旧的 LV_MEM_SIZE_KILOBYTES 已废弃。
+CONFIG_LV_MEM_SIZE=49152
+
+# --- 系统 ---
+CONFIG_FREERTOS_HZ=1000
+
+# --- Bluetooth LE / NimBLE ---
+# ESP32-C3 仅支持 BLE；本应用用 BLE 做 Wi-Fi 配网(BLUFI)。
+CONFIG_BT_ENABLED=y
+CONFIG_BT_NIMBLE_ENABLED=y
+CONFIG_BT_NIMBLE_ROLE_CENTRAL=n
+CONFIG_BT_NIMBLE_ROLE_PERIPHERAL=y
+CONFIG_BT_NIMBLE_ROLE_BROADCASTER=y
+CONFIG_BT_NIMBLE_ROLE_OBSERVER=n
+CONFIG_BT_NIMBLE_MAX_CONNECTIONS=1
+CONFIG_BT_NIMBLE_HOST_BASED_PRIVACY=n
+CONFIG_BT_NIMBLE_NVS_PERSIST=n
+# BLUFI 需要 NimBLE 的 GATT 服务与官方安全协商(DHM + AES + MD5)。
+CONFIG_BT_NIMBLE_BLUFI_ENABLE=y
+# BLUFI 官方安全协商使用 DHM + AES + MD5。
+CONFIG_MBEDTLS_HARDWARE_MPI=n
+CONFIG_MBEDTLS_DHM_C=y
+
+# --- NVS 加密 ---
+# 家庭口令与服务器地址存在加密 NVS 分区里。
+# ESP32-C3 没有 Flash Encryption,只能用 HMAC 外设方案:
+# 密钥由 HMAC 外设从 eFuse 派生,分区数据本身用 AES-CTR 加密。
+# eFuse block 1 用于存放 HMAC 密钥(目的 ESP_EFUSE_KEY_PURPOSE_HMAC_UP)。
+# 首次烧录时由 nvs_flash_init() 自动生成并写入 eFuse —— 这一步不可逆,
+# 之后同一块芯片上的加密分区才能正常读写。
+CONFIG_NVS_ENCRYPTION=y
+CONFIG_NVS_SEC_KEY_PROTECT_USING_HMAC=y
+CONFIG_NVS_SEC_HMAC_EFUSE_KEY_ID=1
+
+# --- TLS / WebSocket ---
+# FoloTalker 连的是自建 HTTPS/WSS 服务端(HomeTalker),用 SNI 里的主机名校验证书。
+# 证书由用户在内网 CA 签发;固件不做任何跳过校验的默认设置。
+CONFIG_MBEDTLS_CERTIFICATE_BUNDLE=y
+CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_FULL=y
+# 自签 CA 链比公共 CA 长,需要更大的动态缓冲。
+CONFIG_MBEDTLS_DYNAMIC_BUFFER=y

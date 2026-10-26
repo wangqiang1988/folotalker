@@ -1,0 +1,14 @@
+# 构建产物
+build/
+sdkconfig
+sdkconfig.old
+managed_components/
+
+# IDE
+.vscode/
+.idea/
+.vs/
+
+# 系统
+.DS_Store
+Thumbs.db
